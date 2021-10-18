@@ -14,15 +14,18 @@ app.get("/create_room/:name", (req, res) => {
   const roomName = "/" + req.params.name;
   if (roomName.length > 2 && roomName.length < 32 && !wsServers.get(roomName)) {
     const wss = new ws.WebSocketServer({ noServer: true });
+    const userMap = new Map();
+    wss.userMap = userMap;
     wss.on("connection", (ws, request) => {
+      const userMap = wss.userMap;
       ws.on("message", (data, isBinary) => {
         const jsonData = JSON.parse(data.toString());
         if (jsonData)
           switch (jsonData.type) {
             case "onopen": {
-              map.set(ws, jsonData.payload);
+              userMap.set(ws, jsonData.payload);
               let users = [];
-              for (let pair of map) users = [...users, pair[1]];
+              for (let pair of userMap) users = [...users, pair[1]];
               wss.clients.forEach((client) => {
                 if (client.readyState === ws.OPEN) {
                   if (client === ws) {
@@ -88,10 +91,10 @@ app.get("/create_room/:name", (req, res) => {
       });
 
       ws.on("close", () => {
-        const name = map.get(ws);
-        map.delete(ws);
+        const name = userMap.get(ws);
+        userMap.delete(ws);
         let users = [];
-        for (let pair of map) users = [...users, pair[1]];
+        for (let pair of userMap) users = [...users, pair[1]];
         wss.clients.forEach((client) => {
           if (client.readyState === ws.OPEN) {
             client.send(
@@ -104,9 +107,11 @@ app.get("/create_room/:name", (req, res) => {
             );
           }
         });
+        //delete websocketserver when no client is connected
+        if (wss.clients.size) wsServers.delete(roomName);
       });
+      wss.userMap = userMap;
     });
-
     wsServers.set(roomName, wss);
     res.json("Room created sucessfully. Room name: " + roomName.slice(1));
   } else {
@@ -139,6 +144,7 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 wss.on("connection", (ws, request) => {
+  console.log(wss.clients.length);
   ws.on("message", (data, isBinary) => {
     const jsonData = JSON.parse(data.toString());
     if (jsonData)
