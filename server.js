@@ -144,7 +144,6 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 wss.on("connection", (ws, request) => {
-  console.log(wss.clients.length);
   ws.on("message", (data, isBinary) => {
     const jsonData = JSON.parse(data.toString());
     if (jsonData)
