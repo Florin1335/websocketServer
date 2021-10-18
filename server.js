@@ -108,7 +108,7 @@ app.get("/create_room/:name", (req, res) => {
           }
         });
         //delete websocketserver when no client is connected
-        if (wss.clients.size) wsServers.delete(roomName);
+        //if (wss.clients.size) wsServers.delete(roomName);
       });
       wss.userMap = userMap;
     });
@@ -240,7 +240,10 @@ wss.on("connection", (ws, request) => {
     });
   });
 });
-
+setInterval(() => {
+  for (let [key, wss] of wsServers)
+    if (wss.clients.size === 0) wsServers.delete(key);
+}, 1000000);
 server.listen(PORT, () => {
   console.log("Server listening on port " + PORT);
 });
